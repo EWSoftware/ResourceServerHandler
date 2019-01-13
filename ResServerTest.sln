@@ -1,0 +1,29 @@
+Microsoft Visual Studio Solution File, Format Version 8.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ResServerTest", "ResServerTest.csproj", "{780E0E0C-F44E-45FE-9EEE-1DEE42E917A3}"
+	ProjectSection(ProjectDependencies) = postProject
+	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ResSrvTest", "http://localhost/ResSrvTest/ResSrvTest.csproj", "{66F03307-008B-45CB-AFD7-769A40CC5EAC}"
+	ProjectSection(ProjectDependencies) = postProject
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfiguration) = preSolution
+		Debug = Debug
+		Release = Release
+	EndGlobalSection
+	GlobalSection(ProjectConfiguration) = postSolution
+		{780E0E0C-F44E-45FE-9EEE-1DEE42E917A3}.Debug.ActiveCfg = Debug|.NET
+		{780E0E0C-F44E-45FE-9EEE-1DEE42E917A3}.Debug.Build.0 = Debug|.NET
+		{780E0E0C-F44E-45FE-9EEE-1DEE42E917A3}.Release.ActiveCfg = Release|.NET
+		{780E0E0C-F44E-45FE-9EEE-1DEE42E917A3}.Release.Build.0 = Release|.NET
+		{66F03307-008B-45CB-AFD7-769A40CC5EAC}.Debug.ActiveCfg = Debug|.NET
+		{66F03307-008B-45CB-AFD7-769A40CC5EAC}.Debug.Build.0 = Debug|.NET
+		{66F03307-008B-45CB-AFD7-769A40CC5EAC}.Release.ActiveCfg = Release|.NET
+		{66F03307-008B-45CB-AFD7-769A40CC5EAC}.Release.Build.0 = Release|.NET
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+	EndGlobalSection
+	GlobalSection(ExtensibilityAddIns) = postSolution
+	EndGlobalSection
+EndGlobal

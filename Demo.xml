@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!-- A demo to show the NoCache option.  The resource server page will
+     replace the text below with the date and time on the server
+     when the resource is requested. -->
+<DemoXML>
+  <TestEntry>
+    <Date>DATETIME</Date>
+  </TestEntry>
+</DemoXML>

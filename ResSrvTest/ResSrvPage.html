@@ -1,0 +1,819 @@
+<!--------------------------------------------------------------------------->
+<!--                           INTRODUCTION
+
+ The Code Project article submission template (HTML version)
+
+Using this template will help us post your article sooner. To use, just
+follow the 3 easy steps below:
+
+     1. Fill in the article description details
+     2. Add links to your images and downloads
+     3. Include the main article text
+
+That's all there is to it! All formatting will be done by our submission
+scripts and style sheets.
+
+-->
+<!--------------------------------------------------------------------------->
+<!--                        IGNORE THIS SECTION                            -->
+<html>
+<head>
+<title>The Code Project</title>
+<style>
+BODY, P, TD { font-family: Verdana, Arial, Helvetica, sans-serif; font-size: 10pt }
+H2,H3,H4,H5 { color: #ff9900; font-weight: bold; }
+H2 { font-size: 13pt; }
+H3 { font-size: 12pt; }
+H4 { font-size: 10pt; color: black; }
+PRE { BACKGROUND-COLOR: #FBEDBB; FONT-FAMILY: "Courier New", Courier, mono; WHITE-SPACE: pre; }
+CODE { COLOR: #990000; FONT-FAMILY: "Courier New", Courier, mono; }
+</style>
+<link rel="stylesheet" type=text/css href="http://www.codeproject.com/styles/global.css">
+</head>
+<body bgcolor="#FFFFFF" color=#000000>
+<!--------------------------------------------------------------------------->
+
+
+<!-------------------------------     STEP 1      --------------------------->
+<!--  Fill in the details (CodeProject will reformat this section for you) -->
+
+<pre>
+Title:       A Resource Server Handler Class For Custom Controls
+Author:      Eric Woodruff
+Email:       Eric@EWoodruff.us
+Environment: Visual Studio .NET, IIS, ASP.NET
+Keywords:    IHttpHandler, Resource, Script, Image, Custom, Control
+Level:       Intermediate
+Description: A class implementing IHttpHandler for use in custom controls to
+             send embedded resources such as scripts, images, and style
+             sheets to the client.
+Section      ASP.NET
+SubSection   Custom Controls
+</pre>
+
+<!-------------------------------     STEP 2      --------------------------->
+<!--  Include download and sample image information.                       -->
+
+<ul class=download>
+<li><a href="ResSrvPage.zip">Download demo and source - 34 Kb</a></li>
+</ul>
+
+<!-------------------------------     STEP 3      --------------------------->
+<!--  Add the article text. Please use simple formatting (<h2>, <p> etc)   -->
+
+<h2>Introduction</h2>
+When developing custom controls for ASP.NET, it may be necessary to create
+some client-side script that is used to interact with the custom control.
+There may also be image files that are used for certain elements of the
+control, such as buttons or style sheets that set the look of the control.
+A decision has to be made about how to deploy these resources with the
+custom control assembly.
+
+<p/>Script can be built up using a <code>StringBuilder</code> or a static
+string, and inserted directly into the page using
+<code>RegisterClientScriptBlock</code>. This is okay for small scripts, but
+is unwieldy for much larger scripts, especially if they are complex enough
+to need debugging to work out problems during development. Scripts can also
+be embedded as resources in the assembly, retrieved at runtime, and again
+inserted into the page using <code>RegisterClientScriptBlock</code>. This
+is better than the <code>StringBuilder</code> approach for large scripts,
+but it is still inserted into the page and is rendered in its entirety,
+every time the page is requested. The more script code you have or the more
+controls on the page that render supporting script code, the larger the
+page gets. The script also cannot be cached on the client to save time on
+subsequent requests.
+
+<p/>The scripts can be distributed as separate files along with the
+assembly. This solves the problem of the code being rendered in the page on
+each request and it can be cached on the client. However, it may complicate
+distribution of the custom control. It is no longer a simple XCOPY
+deployment as now scripts have to be installed along with the assembly. A
+number of factors such as whether it is a production or development server,
+whether or not the application is using SSL, and how the end-user's
+applications are set up, can affect where the scripts go, and you may end
+up with multiple copies in several locations. Versioning issues may also
+come into play if the scripts are modified in future releases of the
+control.
+
+<p/>To solve these issues, I developed a class that implements the
+<code>System.Web.IHttpHandler</code> interface and acts as a resource
+server of sorts. The idea was inspired by examples I saw that showed how to
+render dynamic images using an ASPX page as the source of the
+<code>image</code> tag. The concept is basically the same for the resource
+server handler. You embed the resources in the control assembly and then
+add a simple class to your custom control assembly that implements the
+<code>IHttpHandler</code> interface. A section is added to the
+application's <i>Web.Config</i> file to direct resource requests to the
+handler class. The handler class uses parameters in the query string to
+determine the content type and sends back the appropriate resource such as
+a script, an image, a style sheet, or any other type of data that you need.
+
+<p/>By having the resources embedded in the assembly and serving them as
+needed, there is as little code rendered in the page as possible by the
+controls. The resource handler responses can also be cached on the client,
+so performance can be improved as less information is sent to the client in
+subsequent page requests that utilize the same resources. This is most
+beneficial for users with slow dial-up connections, especially on forms
+that utilize controls with auto-postback enabled. The resources do not have
+to be deployed separately along with the assembly either, thus solving the
+problem of where to install the resources, as well as any issues involving
+versioning. We are back to a simple XCOPY deployment again.
+
+<p/>The use of a resource server handler is not restricted to custom
+controls. It also adds the ability to do such things as request dynamic
+content, such as XML, using client-side script. For example, a request
+could be made to retrieve the results of a database query as XML using
+client-side script. The results could be used to populate a control or a
+popup window with information when it is needed rather than sending
+everything along with the page when first loaded. The following sections
+describe how to setup and utilize the resource server handler class.
+
+<h2>A Word About ASP.NET 2.0</h2>
+The following will allow you to embedded and serve resources in ASP.NET 1.1
+applications as well as ASP.NET 2.0 applications.  However, with ASP.NET
+2.0 the ability to serve embedded web resources is a built-in feature and
+is simpler to implement.  It makes use of embedded resources as described
+in here but utilizes attributes to define them along with a built-in
+<code>Page.ClientScript</code> method to render a link to them to the client.
+It does not require you to write a handler and does not require any entries in
+the <i>Web.config</i> file to define the handler or to allow anonymous access
+to them.  Gary Dryden has already written a good article on how this works so
+I will just refer you to it rather than repeating what it has to say
+(<a href="http://www.codeproject.com/aspnet/MyWebResourceProj.asp">WebResource
+ASP.NET 2.0 Explained</a>
+[<a href="http://www.codeproject.com/aspnet/MyWebResourceProj.asp"
+target=_blank>^</a>]).
+
+<h2>Add Resources to Your Project</h2>
+To keep things organized, store the resources in separate folders grouped
+by type (<i>Scripts</i> for script files, <i>Images</i> for image files,
+etc.). To create a new folder in the project, right click on the project
+name, select <i>Add</i>..., select <i>New Folder</i>, and enter the folder
+name. Add a new resource to the folder by right clicking on it, and
+selecting <i>Add</i>... and then <i>Add New Item</i>... to create a new
+item, or <i>Add Existing Item</i>... if you copied an existing file to the
+new folder. Once added to the project folder, right click on the file and
+select <i>Properties</i>. Change the <i>Build Action</i> property from
+<i>Content</i> to <i>Embedded Resource</i>. This step is the most important
+as it indicates that you want the file to be embedded as a resource in the
+compiled assembly.
+
+<h2>Add the ResSrvHandler Class to Your Project</h2>
+Add the <i>ResSrvHandler.cs</i> source file to your control's project and
+modify it as follows. <i>TODO:</i> comments have been added to help you
+find the sections that need modification.
+
+<p/>Modify the namespace so that it matches the one for your custom control.
+
+<pre lang="cs">
+// TODO: Change the namespace to match your control's namespace.
+namespace ResServerTest.Web.Controls
+{
+</pre>
+
+<p/>Modify the <code>cResSrvHandlerPageName</code> constant so that it
+matches the name you will use in the application's <i>Web.Config</i> file
+to direct resource requests to the class. I have chosen to use the custom
+control namespace with an <i>.aspx</i> extension. This keeps it unique and
+guarantees that it won't conflict with something in the end-user's
+application.
+
+<pre lang="cs">
+// TODO: Modify this constant to name the ASPX page that will be
+// referenced in the application <b>Web.Config</b> file to invoke this
+// handler class.
+
+/// &lt;summary&gt;
+/// The ASPX page name that will cause requests to get routed
+/// to this handler.
+/// &lt;/summary&gt;
+public const string cResSrvHandlerPageName =
+    "ResServerTest.Web.Controls.aspx";
+</pre>
+
+<p/>Modify the <code>cImageResPath</code> and <code>cScriptResPath</code>
+constants to point to your script and image paths. Add additional constants
+for other resource type paths as needed. The names of the embedded
+resources in the assembly are created by using the default namespace of the
+project plus the folder path to the resource. The default namespace is
+usually the same as the assembly name but you can modify it by right
+clicking on the project name, selecting <i>Properties</i>, and changing the
+<i>Default Namespace</i> option in the <i>General</i> section of the
+<i>Common Properties</i> entry. For the demo, the default namespace has
+been changed to match the namespace of the control,
+<code>ResServerTest.Web.Controls</code>, and the resource paths are
+<i>Images</i> and <i>Scripts</i>. As such, the constants are defined as
+shown below. The trailing "." should also be included. The resource name
+will be appended to the appropriate constant when loading it from the
+assembly.
+
+<p/>Note that if you are using VB.NET, the default behavior of the compiler
+differs from the C# compiler. It will not append the default namespace to
+the front of the resource filename unless you explicitly include the
+command line option to tell it to do that. As such, for VB.NET projects,
+you can omit the path constants or set them to empty strings.
+
+<pre lang="cs">
+// TODO: Modify these two constants to match your control's
+// namespace and the folder names of your resources.  Add any
+// additional constants as needed for other resource types.
+
+/// &lt;SUMMARY&gt;
+/// The path to the image resources
+/// &lt;/SUMMARY&gt;
+private const string cImageResPath =
+    "ResServerTest.Web.Controls.Images.";
+
+/// &lt;SUMMARY&gt;
+/// The path to the script resources
+/// &lt;/SUMMARY&gt;
+private const string cScriptResPath =
+    "ResServerTest.Web.Controls.Scripts.";
+</pre>
+
+<p/>The <code>ResourceUrl</code> methods can be called to format the URL
+used to retrieve an embedded resource from an assembly. The first version
+will retrieve the named resource from the assembly that contains the class.
+Simply pass it the name of the resource and it returns a URL that points to
+the resource.
+
+<p/>The second version of the method can be used to extract embedded
+resources from assemblies other than the one containing the resource server
+class. Pass it the name of the assembly that contains the resource (without
+a path or extension, <code>System.Web</code> for example), the name of the
+resource handler that can retrieve it (i.e., the class defined in the
+<code>cResSrvHandlerPageName</code> constant), and the name of the resource
+to retrieve. When using this version, the name of the resource will be
+matched to the first resource that ends with the specified name. This
+allows you to skip the path name if you do not know it or extract resources
+from VB.NET assemblies which do not store the path.
+
+<pre lang="cs">
+/// &lt;summary&gt;
+/// This can be called to format a URL to a resource name that is
+/// embedded within the assembly.
+/// &lt;/summary&gt;
+/// &lt;param name="strResourceName"&gt;The name of the resource&lt;/param&gt;
+/// &lt;param name="bCacheResource"&gt;Specify true to have the
+/// resource cached on the client, false to never cache it.&lt;/param&gt;
+/// &lt;returns&gt;A string containing the URL to the resource&lt;/returns&gt;
+public static string ResourceUrl(string strResourceName,
+  bool bCacheResource)
+{
+    return String.Format("{0}?Res={1}{2}", cResSrvHandlerPageName,
+        strResourceName, (bCacheResource) ? "" : "&amp;NoCache=1");
+}
+
+/// &lt;summary&gt;
+/// This can be called to format a URL to a resource name that is
+/// embedded within a different assembly.
+/// &lt;/summary&gt;
+/// &lt;param name="strAssemblyName"&gt;The name of the assembly that
+/// contains the resource&lt;/param&gt;
+/// &lt;param name="strResourceHandlerName"&gt;The name of the resource
+/// handler that can retrieve it (i.e. the ASPX page name)&lt;/param&gt;
+/// &lt;param name="strResourceName"&gt;The name of the resource&lt;/param&gt;
+/// &lt;param name="bCacheResource"&gt;Specify true to have the
+/// resource cached on the client, false to never cache it.&lt;/param&gt;
+/// &lt;returns&gt;A string containing the URL to the resource&lt;/returns&gt;
+public static string ResourceUrl(string strAssemblyName,
+  string strResourceHandlerName, string strResourceName,
+  bool bCacheResource)
+{
+    return String.Format("{0}?Assembly={1}&amp;Res={2}{3}",
+        strResourceHandlerName,
+        HttpContext.Current.Server.UrlEncode(strAssemblyName),
+        strResourceName, (bCacheResource) ? "" : "&amp;NoCache=1");
+}
+</pre>
+
+<p/>The <code>IHttpHandler.IsReusable</code> property is implemented to
+indicate that the object instance can be reused for other requests. The
+<code>IHttpHandler.ProcessRequest</code> method is implemented to do all of
+the work. The first step is to determine the requested resource's name and
+its type. I use the filename's extension to determine the type. The code
+assumes that the query string parameter is called <code>Res</code>. Adjust
+this if you choose a different parameter name. Likewise, you can modify the
+code to determine the resource name and type in any number of ways
+depending on your needs.
+
+<pre lang="cs">
+/// &lt;summary&gt;
+/// Load the resource specified in the query string and return
+/// it as the HTTP response.
+/// &lt;/summary&gt;
+/// &lt;param name="context"&gt;The context object for the
+/// request&lt;/param&gt;
+public void ProcessRequest(HttpContext context)
+{
+    Assembly asm;
+    StreamReader sr = null;
+    Stream s = null;
+
+    string strResName, strType;
+    byte[] byImage;
+    int nLen;
+    bool bUseInternalPath = true;
+
+    // TODO: Be sure to adjust the QueryString names if you are
+    // using something other than Res and NoCache.
+
+    // Get the resource name and base the type on the extension
+    strResName = context.Request.QueryString["Res"];
+    strType = strResName.Substring(strResName.LastIndexOf(
+        '.') + 1).ToLower();
+</pre>
+
+<p/>The next step is to clear any current response and set up the caching
+options. If the <code>NoCache</code> query string parameter has not been
+specified, the class sets the necessary page caching options in the
+<code>context.Response.Cache</code> object. If it has been specified, the
+options are set such that the response will never be cached. The class
+defaults to having the response cached for one day. Adjust this as
+necessary for your controls. The response is set to vary caching by
+parameter name. The default class only has one parameter called
+<code>Res</code>. If you have additional parameters, be sure to add them as
+additional <code>VaryByParams</code> entries.
+
+<pre lang="cs">
+context.Response.Clear();
+
+// If caching is not disabled, set the cache parameters so that
+// the response is cached on the client for up to one day.
+if(context.Request.QueryString["NoCache"] == null)
+{
+    // TODO: Adjust caching length as needed.
+
+    context.Response.Cache.SetExpires(
+        DateTime.Now.AddDays(1));
+    context.Response.Cache.SetCacheability(
+        HttpCacheability.Public);
+    context.Response.Cache.SetValidUntilExpires(false);
+
+    // Vary by parameter name.  Note that if you have more
+    // than one, add additional lines to specify them.
+    context.Response.Cache.VaryByParams["Res"] = true;
+}
+else
+{
+    // The response is not cached
+    context.Response.Cache.SetExpires(
+        DateTime.Now.AddDays(-1));
+    context.Response.Cache.SetCacheability(
+        HttpCacheability.NoCache);
+}
+</pre>
+
+<p/>The next section checks to see if the resource resides in another
+assembly. If the <code>Assembly</code> query string option has been
+omitted, it assumes the resource is in the same assembly as the class. If
+specified, it looks for the named assembly and, if found, searches for the
+resource within its manifest. When loading from a different assembly, the
+internal class path names are ignored and the name matched during the
+search is used instead.
+
+<pre lang="cs">
+// Get the resource from this assembly or another?
+if(context.Request.QueryString["Assembly"] == null)
+    asm = Assembly.GetExecutingAssembly();
+else
+{
+    Assembly[] asmList =
+        AppDomain.CurrentDomain.GetAssemblies();
+    string strSearchName =
+        context.Request.QueryString["Assembly"];
+
+    foreach(Assembly a in asmList)
+        if(a.GetName().Name == strSearchName)
+        {
+            asm = a;
+            break;
+        }
+
+    if(asm == null)
+        throw new ArgumentOutOfRangeException("Assembly",
+            strSearchName, "Assembly not found");
+
+    // Now get the resources listed in the assembly manifest
+    // and look for the filename.  Note the fact that it is
+    // matched on the filename and not necessarily the path
+    // within the assembly.  This may restricts you to using
+    // a filename only once, but it also prevents the problem
+    // that the VB.NET compiler has where it doesn't seem to
+    // output folder names on resources.
+    foreach(string strResource in asm.GetManifestResourceNames())
+        if(strResource.EndsWith(strResName))
+        {
+            strResName = strResource;
+            bUseInternalPath = false;
+            break;
+        }
+}
+</pre>
+
+<p/>As given, the class can serve up various image and script types, some
+styles for the demo, plus an additional XML file to demonstrate the
+<code>NoCache</code> option. A simple <code lang="cs">switch</code> statement
+is used to determine what type to send back. The
+<code>context.Response.ContentType</code> property is set accordingly, the
+resource is retrieved, and it is then written to the response stream. You
+can expand or reduce the code to suit your needs.
+
+<pre lang="cs">
+switch(strType)
+{
+    case "gif":     // Image types
+    case "jpg":
+    case "jpeg":
+    case "bmp":
+    case "png":
+    case "tif":
+    case "tiff":
+        if(strType == "jpg")
+            strType = "jpeg";
+        else
+            if(strType == "png")
+                strType = "x-png";
+            else
+                if(strType == "tif")
+                    strType = "tiff";
+
+        context.Response.ContentType = "image/" + strType;
+
+        if(bUseInternalPath == true)
+            strResName = cImageResPath + strResName;
+
+        s = asm.GetManifestResourceStream(strResName);
+
+        nLen = Convert.ToInt32(s.Length);
+        byImage = new Byte[nLen];
+        s.Read(byImage, 0, nLen);
+
+        context.Response.OutputStream.Write(byImage, 0, nLen);
+        break;
+
+    case "js":      // Script types
+    case "vb":
+    case "vbs":
+        if(strType == "js")
+            context.Response.ContentType = "text/javascript";
+        else
+            context.Response.ContentType = "text/vbscript";
+
+        if(bUseInternalPath == true)
+            strResName = cScriptResPath + strResName;
+
+        sr = new StreamReader(
+            asm.GetManifestResourceStream(strResName));
+        context.Response.Write(sr.ReadToEnd());
+        break;
+
+    case "css":     // Some style sheet info
+        // Not enough to embed so we'll write it out from here
+        context.Response.ContentType = "text/css";
+
+        if(bUseInternalPath == true)
+            context.Response.Write(".Style1 { font-weight: bold; " +
+                "color: #dc143c; font-style: italic; " +
+                "text-decoration: underline; }\n" +
+                ".Style2 { font-weight: bold; color: navy; " +
+                "text-decoration: underline; }\n");
+        else
+        {
+            // CSS from some other source
+            sr = new StreamReader(
+                asm.GetManifestResourceStream(strResName));
+            context.Response.Write(sr.ReadToEnd());
+        }
+        break;
+
+    case "htm":     // Maybe some html
+    case "html":
+        context.Response.ContentType = "text/html";
+
+        sr = new StreamReader(
+            asm.GetManifestResourceStream(strResName));
+        context.Response.Write(sr.ReadToEnd());
+        break;
+
+    case "xml":     // Even some XML
+        context.Response.ContentType = "text/xml";
+
+        sr = new StreamReader(
+            asm.GetManifestResourceStream(
+            "ResServerTest.Web.Controls." + strResName));
+
+        // This is used to demonstrate the NoCache option.
+        // We'll modify the XML to show the current server
+        // date and time.
+        string strXML = sr.ReadToEnd();
+
+        context.Response.Write(strXML.Replace("DATETIME",
+            DateTime.Now.ToString()));
+        break;
+
+    default:    // Unknown resource type
+        throw new Exception("Unknown resource type");
+}
+</pre>
+
+<p/>For simple text-based resources such as scripts, the
+<code>StreamReader.ReadToEnd</code> method can be used to retrieve the
+resource. For binary resources such as images, you must allocate an array
+and use <code>StreamReader.Read</code> to load the image into the array.
+Once loaded, you can write the array out to the client as shown above.
+
+<p/>If an unknown resource type is requested or it cannot be loaded from
+the assembly, an exception is thrown. For script resource types, the
+exception handler will convert the response to the appropriate type and
+send back a message box or alert so that the exception is displayed when
+the page loads. This will give you a chance to see what failed during
+development. For an XML resource, the exception handler will send back an
+XML response containing nodes with the resource name and the error
+description. For all other resource types, nothing is returned. Images will
+display a broken image placeholder, which serves as an indication that you
+may have done something wrong.
+
+<pre lang="cs">
+catch(Exception excp)
+{
+    XmlDocument xml;
+    XmlNode node, element;
+
+    string strMsg = excp.Message.Replace("\r\n", " ");
+
+    context.Response.Clear();
+    context.Response.Cache.SetExpires(
+        DateTime.Now.AddDays(-1));
+    context.Response.Cache.SetCacheability(
+        HttpCacheability.NoCache);
+
+    // For script, write out an alert describing the problem.
+    // For XML, send an XML response containing the exception.
+    // For all other resources, just let it display a broken
+    // link or whatever.
+    switch(strType)
+    {
+        case "js":
+            context.Response.ContentType = "text/javascript";
+            context.Response.Write(
+                "alert(\"Could not load resource '" +
+                strResName + "': " + strMsg + "\");");
+            break;
+
+        case "vb":
+        case "vbs":
+            context.Response.ContentType = "text/vbscript";
+            context.Response.Write(
+                "MsgBox \"Could not load resource '" +
+                strResName + "': " + strMsg + "\"");
+            break;
+
+        case "xml":
+            xml = new XmlDocument();
+            node = xml.CreateElement("ResourceError");
+
+            element = xml.CreateElement("Resource");
+            element.InnerText = "Could not load resource: " +
+                strResName;
+            node.AppendChild(element);
+
+            element = xml.CreateElement("Exception");
+            element.InnerText = strMsg;
+            node.AppendChild(element);
+
+            xml.AppendChild(node);
+            context.Response.Write(xml.InnerXml);
+            break;
+    }
+}
+finally
+{
+    if(sr != null)
+        sr.Close();
+
+    if(s != null)
+        s.Close();
+}
+</pre>
+
+<h2>Using the Resource Server Handler in Your Control</h2>
+Using the resource server handler in the custom control is very simple.
+Just add code to your class to render the attributes, script tags, or other
+resource types such as images that utilize the resource server page name.
+This is done by calling the <code>ResSrvHandler.ResourceUrl</code> method
+with the name of the resource and a Boolean flag indicating whether or not
+to cache it on the client. The demo control contains several examples.
+
+<pre lang="cs">
+// An image
+img = new HtmlImage();
+
+// Renders as:
+// src="ResServerTest.Web.Controls.aspx?Res=FitHeight.bmp"
+img.Src = ResSrvHandler.ResourceUrl("FitHeight.bmp", true);
+
+// Call a function in the client-side script code registered below
+img.Attributes["onclick"] = "javascript: FitToHeight()";
+
+this.Controls.Add(img);
+
+// Register the client-side script module
+// Renders as: &lt;script type='text/javascript'
+// src='ResServerTest.Web.Controls.aspx?Res=DemoCustomControl.js'&gt;
+// &lt;/script&gt;
+this.Page.RegisterStartupScript("Demo_Startup",
+    "&lt;script type='text/javascript' src='" +
+    ResSrvHandler.ResourceUrl("DemoCustomControl.js", true) +
+    "'&gt;&lt;/script&gt;");
+
+// Register the style sheet
+// Renders as: &lt;link rel='stylesheet' type='text/css'
+// href='ResServerTest.Web.Controls.aspx?Res=Styles.css'&gt;
+this.Page.RegisterScriptBlock("Demo_Styles",
+    "&lt;link rel='stylesheet' type='text/css' href='" +
+    ResSrvHandler.ResourceUrl("Styles.css") + "'&gt;\n");
+</pre>
+
+<p/>As noted earlier, the lack of the <code>NoCache</code> query string
+option will cause the resources to be cached on the client. To turn off
+caching for a resource, simply specify <code lang="cs">false</code> for the
+cache parameter of the <code>ResourceUrl</code> methods, or add the
+<code>NoCache</code> parameter to the query string if hand-coding the URL.
+The demo ASPX page contains an example that retrieves an XML document from
+the control assembly. It uses the no caching option so that it displays the
+current time on the server every time the XML resource is requested. It
+also contains a couple of examples that retrieve resources from assemblies
+other than the custom control's assembly.
+
+<pre lang="jscript">
+&lt;script type='text/javascript'&gt;
+// Demonstrate the loading of uncached, dynamic resources outside the
+// control class.  This gets some XML from the resource server page.
+function funShowXML()
+{
+    window.open('ResServerTest.Web.Controls.aspx?Res=Demo.xml&amp;NoCache=1',
+         null,
+        'menubar=no,personalbar=no,resizable=yes,scrollbars=yes,status=no,' +
+        'toolbar=no,screenX=50,screenY=50,height=400,width=800').focus()
+}
+&lt;/script&gt;
+</pre>
+
+<h2>Using the Control and the Resource Server Handler in an Application</h2>
+In the application's project, add a reference to your custom control's
+assembly and add your custom control to the application's forms in the
+normal fashion. To use the resource server handler, add an entry in the
+<code lang="xml">&lt;system.web&gt;</code> section of your application's
+<i>Web.Config</i> file like the following:
+
+<pre lang="xml">
+&lt;!-- Demo Control Resource Server Handler
+     Add this section to map the resource requests to the resource
+     handler class in the custom control assembly. --&gt;
+&lt;httpHandlers&gt;
+  &lt;add verb="*" path="ResServerTest.Web.Controls.aspx"
+     type="ResServerTest.Web.Controls.ResSrvHandler,
+     ResServerTest.Web.Controls"/&gt;
+&lt;/httpHandlers&gt;
+</pre>
+
+<p/>Modify the <code>path</code> attribute so that it matches the
+<code>ResSrvHandler.cResSrvHandlerPageName</code> constant. Modify the
+<code>type</code> attribute to reference your resource server handler's
+class name (including its namespace) followed by a comma and then the name
+of the assembly. This entry causes any requests containing the page name
+specified in the <code>path</code> attribute, regardless of folder, to get
+mapped to your resource handler class.
+
+<h2>Allowing Anonymous Access to Resources When Using Forms-Based Authentication</h2>
+When using forms-based authentication to secure an entire application,
+access to the resources is prevented on the logon page because the above
+HTTP handler uses an ASPX page name to route the requests for resources to
+the handler. As such, it is treated like any other request for a normal
+page, and instead of returning the resource, ASP.NET redirects the request
+to the login page as well. To prevent this and allow anonymous access to
+the resource server handler from the logon page, the following section
+should be added to the <code>&lt;configuration&gt;</code> section of your
+<i>Web.config</i> file.
+
+<pre lang="xml">
+&lt;!-- This is needed to allow anonymous access to the resource server
+     handler for the ResServerTest.Web.Controls namespace from a logon
+     web form when using forms-based authentication. --&gt;
+&lt;location path="ResServerTest.Web.Controls.aspx"&gt;
+    &lt;system.web&gt;
+        &lt;authorization&gt;
+            &lt;allow users="*"/&gt;
+        &lt;/authorization&gt;
+    &lt;/system.web&gt;
+&lt;/location&gt;
+</pre>
+
+<p/>This allows all users to access the resources without authentication,
+thus allowing the classes and controls in the assembly that utilize the
+resource server handler to be used on the logon web form. Just modify the
+page name in the <code>path</code> attribute of the <code>location</code>
+tag to match the one used in the HTTP handler section.
+
+<h2>Common Errors and Problems</h2>
+The most common errors when using the resource server handler are
+misspelling the resource name and forgetting to change the <i>Build
+Action</i> property to <i>Embedded Resource</i>. In both cases, the error
+<code lang="text">Value cannot be null. Parameter name: stream</code> is
+returned for script and XML resources. Image resources just won't display
+anything. The demo project contains examples of these errors.
+
+<p/>Another common error is misspelling the ASPX page name when referencing
+it in the <i>Web.Config</i> file or in web forms when retrieving dynamic
+content. In these cases, you will get broken links or "resource not found"
+errors. If you misspell the class or assembly name in the <i>Web.Config</i>
+file, the application will fail to start, and you will get an error telling
+you that it cannot find the specified type or assembly. The type or
+assembly shown in the error message will be the incorrect name for the
+resource handler class or its assembly. Correcting the names will resolve
+the errors.
+
+<p/>A problem that can occur during development is making modifications to
+the resources and then not seeing those changes reflected when testing the
+control. The reason for this is that embedded resources do not create a
+build dependency. As such, modifying them does not cause a rebuild of the
+assembly. When making such changes, you just have to remember to always
+force a rebuild of the assembly so that it embeds the updated resources.
+You may also have to force a refresh of the page to get it to download the
+updated resource (Ctrl+F5 in Internet Explorer for example).
+
+<p/>You can test the retrieval of a resource and view what gets returned by
+opening the browser and entering the URL to the resource. For text-based
+resources, prefix the URL with "view-source:". For example:
+
+<pre lang="text">
+view-source:http://localhost/ResSrvTest/ResServerTest.Web.
+Controls.aspx?Res=DemoCustomControl.js
+</pre>
+
+<p/>This would retrieve the <i>DemoCustomControl.js</i> file and display it
+in a Notepad window.
+
+<h2>The Demo</h2>
+To try out the demo application and custom control, create a virtual
+directory in IIS called <b>ResSrvTest</b> and point it at the
+<i>DotNet\Web\ReServerTest\ResSrvTest</i> folder. The startup page is
+<i>WebForm1.aspx</i>. The demo project is set up to compile and run on a
+development machine that has Visual Studio .NET 2003 and IIS running on it.
+If you are using a remote server, you will need to set up the virtual
+directory, build the demo custom control separately, and copy it and the
+demo application files to the server location.
+
+<h2>Conclusion</h2>
+I have used this method in my custom controls that utilize client-side
+script and image files, and have found it to be quite useful. Development
+of the controls involving client-side script has been made easier as has
+the deployment of the control assemblies.
+
+<h2>Revision History</h2>
+<table cellspacing="0" cellpadding="0" border="0">
+  <tr>
+    <td valign="top">04/02/2006</td>
+    <td width="50px">&nbsp;</td>
+    <td>Removed <code>ReadBinaryResource</code> as it is not needed.  Also
+added notes about the new support for web resources in ASP.NET
+2.0.<br/><br/></td>
+  </tr>
+  <tr>
+    <td valign="top">06/27/2004</td>
+    <td width="50px">
+    <td>Made some code adjustments.  Made the following additions based
+on suggestions from Adam Pawsey:
+        <ul>
+            <li>Added some static helper methods to create resource links.
+            <li>Added support for loading resources from other assemblies
+                besides the one containing the resource handler class.
+        </ul>
+    </td>
+  </tr>
+    <td valign="top">07/19/2003</td>
+    <td width="50px">
+    <td>Added a section on getting the resource server to work from a
+logon web form in an application using forms-based authentication.
+Updated the XML code documentation.  Rebuilt the project with
+<b>Visual Studio.NET 2003</b>.<br/><br/></td>
+  </tr>
+  <tr>
+    <td valign="top">04/09/2003</td>
+    <td width="50px">&nbsp;</td>
+    <td>Changed the resource server class so that it implements
+<code>System.Web.IHttpHandler</code> instead of deriving from
+<code>System.Web.UI.Page</code>.  This improves performance and further
+simplifies usage of the class.<br/><br/></td>
+  </tr>
+  <tr>
+    <td valign="top">04/06/2003</td>
+    <td width="50px">&nbsp;</td>
+    <td>Initial release.</td>
+  </tr>
+</table>
+
+<!-------------------------------    That's it!   --------------------------->
+</body>
+</html>
